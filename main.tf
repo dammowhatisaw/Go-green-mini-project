@@ -72,6 +72,8 @@ resource "aws_launch_configuration" "web_launch_config" {
   name_prefix = "web-launch-config"
   image_id = "ami-01450e8988a4e7f44"  # Amazon Linux 2 
   instance_type = "t2.micro"
+
+
 }
 
 resource "aws_autoscaling_group" "web_asg" {
@@ -126,4 +128,42 @@ resource "aws_instance" "web_instance" {
   tags = {
     Name = "web-instance-${count.index + 1}"
   }
+# Add connection block
+#   connection {
+#     type        = "ssh"
+#     user        = "ec2-user"  # or the appropriate user for your AMI
+#     private_key = file("/path/to/your/private/key.pem")
+#     host        = self.public_ip
+#   }
+ user_data = <<-EOF
+    !/bin/bash -ex
+
+    # Update the system
+    sudo dnf -y update
+
+    # Install MySQL Community Server
+    sudo dnf -y install https://dev.mysql.com/get/mysql80-community-release-el9-1.noarch.rpm
+    sudo dnf -y install mysql-community-server
+
+    # Start and enable MySQL
+    sudo systemctl start mysqld
+    sudo systemctl enable mysqld
+
+    # Install Apache and PHP
+    sudo dnf -y install httpd php
+
+    # Start and enable Apache
+    sudo systemctl start httpd
+    sudo systemctl enable httpd
+
+    # Navigate to the HTML directory
+    cd /var/www/html
+
+    # Download and extract a compressed file
+    sudo wget https://aws-tc-largeobjects.s3-us-west-2.amazonaws.com/CUR-TF-200-ACACAD/studentdownload/lab-app.tgz
+    sudo tar xvfz lab-app.tgz
+
+    # Change ownership of a file
+    sudo chown apache:root /var/www/html/rds.conf.php
+  EOF
 }
